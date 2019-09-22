@@ -9,22 +9,33 @@ puts "AWSインスタンスを起動しますか？停止しますか？\n[1]起
 operation = 
   case gets.to_i
   when 1
+    print "リージョンを入力してください："
+    user_region = gets.chomp
+    
+    print "EC2インスタンスのIDを入力してください："
+    ec2_instance_id = gets.chomp
+    
+    print "RDSインスタンスの名称を入力してください："
+    rds_instance_name = gets.chomp
+
     'boot'
   when 2
     'stop'
   else
     '?'
   end
+  
+define_method :setup do
+  # EC2インスタンスを作成する
+  client = Aws::EC2::Client.new(region: user_region)
+  ec2 = Aws::EC2::Resource.new(client: client)
+  ec2_instance = ec2.instance(ec2_instance_id)
 
-# EC2インスタンスを作成する
-client = Aws::EC2::Client.new(region: 'ap-northeast-1') # 東京リージョンの場合は、ap-northeast-1になる
-ec2 = Aws::EC2::Resource.new(client: client)
-ec2_instance = ec2.instance('i-000ef11712c8e6a44') #ec2.instanceの引数のIDは、各自のEC2インスタンスのIDに読み換える
-
-# RDSインスタンスを作成する
-rds_client = Aws::RDS::Client.new(region: 'ap-northeast-1')
-rds = Aws::RDS::Resource.new(client: rds_client)
-rds_instance = rds.db_instance('aws-and-infra-web') #rds.db_instanceの引数の名前は、各自のRDSインスタンスのIDに読み換える
+  # RDSインスタンスを作成する
+  rds_client = Aws::RDS::Client.new(region: user_region)
+  rds = Aws::RDS::Resource.new(client: rds_client)
+  rds_instance = rds.db_instance(rds_instance_name)
+end
 
 define_method :public_ip_not_allocated? do
   if ec2_instance.network_interfaces.first.data.association.ip_owner_id == 'amazon'
@@ -79,6 +90,7 @@ define_method :boot_aws do
 end
 
 if operation == 'boot'
+  setup
   boot_aws
   puts '起動完了しました。'
 elsif operation == 'stop'
